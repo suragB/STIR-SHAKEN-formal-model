@@ -159,8 +159,11 @@ Next ==
 
 Liveness ==
     \* Ensures all calls will eventually terminate
-    \A id \in callIds:
+   /\ \A id \in callIds:
         <>[](callState[id].stage = "SIP_Termination")
+    \* Ensure stiOOBS nodes will eventually all be idle when call finishes
+    /\ \A id2 \in callIds:
+        <>[](stiOOBS[id2] = "idle")
 
 Invariants ==
     \* Attestation preserved by CompleteCall action
@@ -172,8 +175,8 @@ Invariants ==
             stiCPS[id2] /= NoPassport)
 
     \* PASSporTs remain valid
-    /\ \A id \in callIds:
-        [](callState[id].pport.payload.iat + MaxTokenTTL >= currTime)
+    /\ \A id3 \in callIds:
+        [](callState[id3].pport.payload.iat + MaxTokenTTL >= currTime)
 
 
 Spec == 
