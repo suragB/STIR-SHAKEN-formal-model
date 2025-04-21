@@ -1,0 +1,9 @@
+/Baseline/states
+/OutOfBand/states
+/OutOfBand/OutOfBand.toolbox
+/TestCounter.toolbox
+
+*.dvi
+*.out
+*.pdf
+*.tex
