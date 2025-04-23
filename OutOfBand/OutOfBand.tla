@@ -20,15 +20,14 @@ Flow:
 
 EXTENDS Naturals, Sequences, FiniteSets, TLC
 
-CONSTANTS 
-    MaxTDMLatency, \* Adding non-deterministic latency values to mimic real-world randomness
+CONSTANTS
     JWT_TTL,    \*  Used to define the JWT time until expiry, would be defined by servie provider's routing and network protection timers
     MaxTokenTTL \*  Used to see if PASSporTs expired before call was successfully transmitted
 
 VARIABLES 
     stiCPS, \* Used to track PASSporT handling through STI-CPS
     stiOOBS, \* Used to keep track of intermediary STI-OOBS which send request to STI-CPS to publish/retrieve PASSporTs
-    currTime, \* A way to track time
+    currTime, \* Tracking logical time steps (not real time)
     callState,  \* Tracks the state of the call as it progresses through the actions
     nonceRegistry \* Tracks the nonces of used JWTs, meant to prevent replay attacks on the STI-CPS with previoulsy used JWTs
 
@@ -44,7 +43,6 @@ NoPassport == [
 NoJWT == [
     iat |-> 0,
     exp |-> 0,
-    passports |-> "",
     nonce |-> 0
 ]
 
@@ -80,7 +78,7 @@ PublishPassport(id) ==
                         ![id].jwt = [
                             iat |-> currTime,
                             exp |-> currTime + JWT_TTL,
-                            nonce |-> currTime * 10 + id
+                            nonce |-> currTime + id \*
                         ]]
     /\ nonceRegistry' = nonceRegistry \cup {callState'[id].jwt.nonce}
     /\ currTime' = currTime + 1
@@ -97,12 +95,13 @@ TDMNNIRetrievePassport(id) ==
                         ![id].jwt = [
                             iat |-> currTime,
                             exp |-> currTime + JWT_TTL,
-                            nonce |-> currTime * 10 + id
+                            nonce |-> currTime + id
                         ]]
     /\ stiCPS' = [stiCPS EXCEPT ![id] = NoPassport]
     /\ currTime' = currTime + 1
     /\ nonceRegistry' = nonceRegistry \cup {callState'[id].jwt.nonce}
 
+\* If
 TDMNNIPublishPassport(id) ==
     /\ callState[id].stage = "TDM_Interconnect"
     /\ callState[id].pport /= NoPassport
@@ -113,10 +112,9 @@ TDMNNIPublishPassport(id) ==
                         ![id].jwt = [
                             iat |-> currTime,
                             exp |-> currTime + JWT_TTL,
-                            nonce |-> currTime * 10 + id
+                            nonce |-> currTime + id
                         ]]
-    /\ \E latency \in 5..MaxTDMLatency: 
-            currTime' = currTime + latency
+    /\ currTime' = currTime + 1
     /\ nonceRegistry' = nonceRegistry \cup {callState'[id].jwt.nonce}
 
 ReintegratePassport(id) ==
@@ -130,10 +128,11 @@ ReintegratePassport(id) ==
                         ![id].jwt = [
                             iat |-> currTime,
                             exp |-> currTime + JWT_TTL,
-                            nonce |-> currTime * 1000 + id
+                            nonce |-> currTime + id
                         ]]
-    /\ currTime' = currTime + 1
     /\ nonceRegistry' = nonceRegistry \cup {callState'[id].jwt.nonce}
+    /\ \E delay \in {1, 5, 10, 15, 20}: \* Adding delay to simulate reduced availability or network errors related to the OOB solution.
+        currTime' = currTime + delay
     /\ UNCHANGED stiCPS
 
 \* This action will ensure calls retan attestation
@@ -146,7 +145,7 @@ CompleteCall(id) ==
 ReplayJWT(id) ==
     /\ callState[id].stage = "SIP_Termination"
     /\ callState[id].jwt /= NoJWT
-    /\ ~IsValidJWT(callState[id].jwt)
+    /\ ~IsValidJWT(callState[id].jwt) \* Here we expect the JWT to be invalid
     /\ UNCHANGED <<currTime, stiCPS, stiOOBS, callState, nonceRegistry>>
 
 Next ==
