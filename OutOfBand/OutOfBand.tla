@@ -131,7 +131,7 @@ ReintegratePassport(id) ==
                             nonce |-> currTime + id
                         ]]
     /\ nonceRegistry' = nonceRegistry \cup {callState'[id].jwt.nonce}
-    /\ \E delay \in {1, 5, 10, 15, 20}: \* Adding delay to simulate reduced availability or network errors related to the OOB solution.
+    /\ \E delay \in {15, 20, 25, 30}: \* Adding delay to simulate reduced availability or network errors related to the OOB solution.
         currTime' = currTime + delay
     /\ UNCHANGED stiCPS
 
